@@ -1,199 +1,378 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página em Manutenção</title>
+    <title>Carimbo Digital Pro | Equipe L</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --text-dark: #1e293b;
-            --text-light: #64748b;
-            --bg-color: #f8fafc;
+        body { font-family: 'Inter', sans-serif; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        input, textarea, select {
+            transition: all 0.2s ease;
+            border: 1.5px solid #e2e8f0;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-dark);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+        input:focus {
+            border-color: #3b82f6;
+            ring: 2px;
+            ring-color: #bfdbfe;
+            outline: none;
         }
 
-        .container {
-            text-align: center;
-            max-width: 500px;
-            width: 100%;
-            background: white;
-            padding: 3rem;
-            border-radius: 24px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        .btn-action {
+            transition: transform 0.1s active;
         }
+        .btn-action:active { transform: scale(0.95); }
 
-        .icon-wrapper {
-            margin-bottom: 2rem;
-            position: relative;
-            display: inline-block;
-        }
-
-        .main-icon {
-            width: 80px;
-            height: 80px;
-            fill: var(--primary-color);
-            animation: pulse 2s infinite ease-in-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        h1 {
-            font-size: 1.875rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            color: var(--text-dark);
-        }
-
-        .message-box {
-            background-color: #eff6ff;
-            border-left: 4px solid var(--primary-color);
-            padding: 1rem;
-            margin-bottom: 2rem;
-            border-radius: 8px;
-            text-align: left;
-        }
-
-        .message-box p {
-            color: #1e40af;
-            font-weight: 500;
-            margin-bottom: 0;
-            font-size: 0.95rem;
-        }
-
-        p {
-            color: var(--text-light);
-            line-height: 1.6;
-            margin-bottom: 2rem;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            background-color: #fef3c7;
-            color: #92400e;
-            padding: 0.5rem 1rem;
+        #toast {
+            visibility: hidden;
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 1rem 2rem;
             border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
         }
+        #toast.show { visibility: visible; opacity: 1; }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #f59e0b;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: blink 1.5s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background-color: #e2e8f0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 0.5rem;
-        }
-
-        .progress-fill {
-            width: 75%;
-            height: 100%;
-            background-color: var(--primary-color);
-            border-radius: 4px;
-            transition: width 0.5s ease-in-out;
-        }
-
-        .progress-text {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        footer {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid #f1f5f9;
-            font-size: 0.875rem;
-            color: var(--text-light);
-        }
-
-        .social-links {
-            margin-top: 1rem;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        .social-links a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
+        .printing-mode .no-print { display: none !important; }
+        .printing-mode input { border: none !important; background: transparent !important; font-weight: bold; }
+        
+        /* Custom Checkbox */
+        .custom-cb {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #2563eb;
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen pb-12">
 
-    <div class="container">
-        <div class="status-badge">
-            <span class="status-dot"></span>
-            Manutenção em curso
-        </div>
+    <div id="toast">Operação realizada com sucesso!</div>
 
-        <div class="icon-wrapper">
-            <svg class="main-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-        </div>
-
-        <h1>Pausa técnica</h1>
-        
-        <div class="message-box">
-            <p>Estamos a trabalhar para manter este site gratuito e acessível para todos.</p>
-        </div>
-        
-        <p>Pedimos desculpa pelo incómodo. Estamos a realizar atualizações essenciais e voltaremos a estar online o mais brevemente possível.</p>
-
-        <div class="progress-bar">
-            <div class="progress-fill"></div>
-        </div>
-        <span class="progress-text">Progresso da Atualização: 75%</span>
-
-        <footer>
-            <p>&copy; 2026 Todos os direitos reservados.</p>
-            <div class="social-links">
-                <a href="#">Contacto</a>
-                <a href="#">Apoiar Projeto</a>
+    <!-- Header Fixo Mobile -->
+    <nav class="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200 mb-6 no-print">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <span class="font-bold text-blue-600 tracking-tight">CARIMBO DIGITAL <span class="text-slate-400 font-normal">v1.5</span></span>
+            <div class="flex gap-2">
+                <button onclick="takeScreenshot()" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Gerar Imagem">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </button>
+                <button onclick="exportAndShareExcel()" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Exportar Excel">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </button>
             </div>
-        </footer>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4" id="capture-area">
+        
+        <!-- Bloco de Identificação -->
+        <section class="glass-card rounded-2xl shadow-sm p-6 mb-6">
+            <div class="flex items-center gap-2 mb-6 border-b pb-4">
+                <div class="w-2 h-8 bg-blue-600 rounded-full"></div>
+                <h2 class="text-xl font-bold text-slate-800 uppercase tracking-tight">Controle de Campo</h2>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="col-span-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Número RDO</label>
+                    <input type="number" id="field-id" class="w-full p-3 bg-slate-50 rounded-xl font-bold text-blue-700" value="1">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                    <input type="date" id="current-date" class="w-full p-3 bg-slate-50 rounded-xl text-sm">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Equipe</label>
+                    <input type="text" id="field-equipe" class="w-full p-3 bg-blue-50/50 border-blue-100 rounded-xl font-bold text-blue-900" value="Equipe L">
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Técnicos Responsáveis</label>
+                <input type="text" id="field-tecnicos" placeholder="Nomes dos colaboradores..." class="w-full p-3 bg-slate-50 rounded-xl">
+            </div>
+        </section>
+
+        <!-- Bloco Localização -->
+        <section class="glass-card rounded-2xl shadow-sm p-6 mb-6">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Localização e Tickets
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Task TOA</label>
+                        <input type="text" id="field-task" placeholder="Ex: 123456" class="w-full p-2.5 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Incident ID</label>
+                        <input type="text" id="field-incident" placeholder="Ex: INC-987" class="w-full p-2.5 rounded-lg">
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Endereço Completo</label>
+                        <textarea id="field-endereco" rows="1" placeholder="Rua, número..." class="w-full p-2.5 rounded-lg resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Bairro</label>
+                        <input type="text" id="field-bairro" placeholder="Bairro" class="w-full p-2.5 rounded-lg">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bloco Dinâmico: Atividades e Materiais -->
+        <section class="space-y-6">
+            <!-- Atividades -->
+            <div class="glass-card rounded-2xl shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-blue-600 uppercase">Atividades Selecionadas</h3>
+                </div>
+                <div id="atividades-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                <div class="mt-4 flex gap-2 no-print">
+                    <input type="text" id="new-activity" placeholder="Nova atividade..." class="flex-1 p-2 text-sm rounded-lg border-dashed">
+                    <button onclick="addItem('activity')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm btn-action shadow-md shadow-blue-200">Add</button>
+                </div>
+            </div>
+
+            <!-- Serviços -->
+            <div class="glass-card rounded-2xl shadow-sm p-6 border-l-4 border-l-emerald-500">
+                <h3 class="text-sm font-bold text-emerald-600 uppercase mb-4">Serviços Realizados</h3>
+                <div id="servicos-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                <div class="mt-4 flex gap-2 no-print">
+                    <input type="text" id="new-service" placeholder="Novo serviço..." class="flex-1 p-2 text-sm rounded-lg border-dashed">
+                    <button onclick="addItem('service')" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm btn-action">Add</button>
+                </div>
+            </div>
+
+            <!-- Materiais -->
+            <div class="glass-card rounded-2xl shadow-sm p-6 border-l-4 border-l-rose-500">
+                <h3 class="text-sm font-bold text-rose-600 uppercase mb-4">Material Utilizado</h3>
+                <div id="materiais-list" class="space-y-3"></div>
+                <div class="mt-4 flex gap-2 no-print">
+                    <input type="text" id="new-material" placeholder="Novo item..." class="flex-1 p-2 text-sm rounded-lg border-dashed">
+                    <button onclick="addItem('material')" class="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold text-sm btn-action">Add</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Ações WhatsApp Fixo no Mobile -->
+        <div class="fixed bottom-6 right-6 no-print flex flex-col gap-3">
+            <button onclick="copyToClipboard()" class="bg-emerald-500 text-white p-4 rounded-full shadow-2xl hover:bg-emerald-600 transition-all btn-action border-4 border-white">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.588-5.946 0-6.556 5.332-11.888 11.888-11.888 3.176 0 6.161 1.237 8.404 3.48s3.48 5.228 3.48 8.404c0 6.556-5.332 11.888-11.888 11.888-2.096 0-4.141-.547-5.945-1.588l-6.138 1.613zm6.422-3.414l.36.213c1.554.921 3.35 1.408 5.195 1.408 5.423 0 9.834-4.411 9.834-9.834s-4.411-9.834-9.834-9.834-9.834 4.411-9.834 9.834c0 2.056.64 4.055 1.852 5.748l.235.326-.995 3.637 3.73-.979z"/></svg>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Modal Screenshot Premium -->
+    <div id="screenshot-modal" class="fixed inset-0 bg-slate-900/90 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full overflow-hidden flex flex-col items-center animate-in fade-in zoom-in duration-300">
+            <div class="w-full p-4 border-b flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-700">Visualização do Relatório</h3>
+                <button onclick="closeScreenshot()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="screenshot-container" class="p-6 bg-slate-200 w-full overflow-auto max-h-[60vh] flex justify-center"></div>
+            <div class="p-6 w-full bg-white text-center">
+                <p class="text-xs text-slate-500 mb-4">Toque e segure na imagem para salvar na galeria.</p>
+                <button onclick="closeScreenshot()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold">Fechar</button>
+            </div>
+        </div>
     </div>
 
+    <script>
+        // Configuração de Dados
+        const defaultStore = {
+            activities: ["Lançamento de cabo", "Espinamento", "Acomodação de emendas", "Vedação de caixas", "Lançamento de cordoalha"],
+            services: ["Encabeçamento", "Retencionamento", "Espinamento da rede"],
+            materials: ["Alças Preformadas", "Metros de Cordoalha", "Cabo Óptico", "Fio de Espinar"]
+        };
+
+        let db = JSON.parse(localStorage.getItem('carimbo_pro_db')) || defaultStore;
+
+        function save() { localStorage.setItem('carimbo_pro_db', JSON.stringify(db)); }
+
+        // Inicialização
+        document.getElementById('current-date').value = new Date().toISOString().split('T')[0];
+
+        function render(type) {
+            const list = db[type === 'activity' ? 'activities' : type === 'service' ? 'services' : 'materials'];
+            const container = document.getElementById(`${type === 'activity' ? 'atividades' : type === 'service' ? 'servicos' : 'materiais'}-list`);
+            
+            container.innerHTML = '';
+            list.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = "group flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:shadow-md transition-all";
+                
+                let content = `
+                    <input type="checkbox" id="${type}-${idx}" class="custom-cb no-print" data-name="${item}">
+                    <label for="${type}-${idx}" class="text-sm font-medium text-slate-700 flex-1 cursor-pointer">${item}</label>
+                `;
+
+                if (type === 'material') {
+                    content += `<input type="text" id="qty-${idx}" placeholder="Qtd" class="w-16 p-1 text-center bg-slate-50 border rounded-lg text-xs no-print" onclick="document.getElementById('${type}-${idx}').checked=true">`;
+                }
+
+                content += `
+                    <button onclick="remove('${type}', ${idx})" class="no-print opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                `;
+
+                div.innerHTML = content;
+                container.appendChild(div);
+            });
+        }
+
+        function addItem(type) {
+            const input = document.getElementById(`new-${type}`);
+            const val = input.value.trim();
+            if(!val) return;
+            
+            const key = type === 'activity' ? 'activities' : type === 'service' ? 'services' : 'materials';
+            if(!db[key].includes(val)) {
+                db[key].push(val);
+                save();
+                render(type);
+                input.value = '';
+                showToast("Item adicionado!");
+            }
+        }
+
+        function remove(type, idx) {
+            const key = type === 'activity' ? 'activities' : type === 'service' ? 'services' : 'materials';
+            db[key].splice(idx, 1);
+            save();
+            render(type);
+        }
+
+        function validate() {
+            const id = document.getElementById('field-id').value;
+            const tech = document.getElementById('field-tecnicos').value;
+            if(!id || !tech) {
+                showToast("⚠️ Preencha RDO e Técnicos!");
+                return false;
+            }
+            return true;
+        }
+
+        async function takeScreenshot() {
+            if(!validate()) return;
+            
+            const area = document.getElementById('capture-area');
+            area.classList.add('printing-mode');
+            
+            // Esconder o que não está selecionado
+            const items = document.querySelectorAll('[type="checkbox"]');
+            items.forEach(cb => {
+                if(!cb.checked) cb.closest('.group').style.display = 'none';
+                else cb.style.display = 'none';
+            });
+
+            try {
+                const canvas = await html2canvas(area, { scale: 2, backgroundColor: '#f8fafc' });
+                const img = new Image();
+                img.src = canvas.toDataURL();
+                img.className = "shadow-2xl border rounded-lg";
+                document.getElementById('screenshot-container').innerHTML = '';
+                document.getElementById('screenshot-container').appendChild(img);
+                document.getElementById('screenshot-modal').classList.remove('hidden');
+            } finally {
+                area.classList.remove('printing-mode');
+                items.forEach(cb => {
+                    cb.closest('.group').style.display = '';
+                    cb.style.display = '';
+                });
+            }
+        }
+
+        function copyToClipboard() {
+            if(!validate()) return;
+
+            const get = id => document.getElementById(id).value;
+            const acts = Array.from(document.querySelectorAll('#atividades-list input:checked')).map(c => "✅ " + c.dataset.name);
+            const servs = Array.from(document.querySelectorAll('#servicos-list input:checked')).map(c => "🔹 " + c.dataset.name);
+            const mats = Array.from(document.querySelectorAll('#materiais-list input:checked')).map(c => {
+                const q = c.closest('.group').querySelector('[id^="qty-"]').value || '1';
+                return `📦 ${q}x ${c.dataset.name}`;
+            });
+
+            let t = `📋 *RELATÓRIO DE CAMPO - RDO ${get('field-id')}*\n`;
+            t += `📅 *DATA:* ${get('current-date')}\n`;
+            t += `👷 *EQUIPE:* ${get('field-equipe')}\n`;
+            t += `👥 *TÉCNICOS:* ${get('field-tecnicos')}\n\n`;
+            t += `📍 *LOCAL:* ${get('field-endereco')} (${get('field-bairro')})\n`;
+            t += `🎫 *TASK:* ${get('field-task')} | *INC:* ${get('field-incident')}\n\n`;
+            
+            if(acts.length) t += `🛠 *ATIVIDADES:*\n${acts.join('\n')}\n\n`;
+            if(servs.length) t += `⚡ *SERVIÇOS:*\n${servs.join('\n')}\n\n`;
+            if(mats.length) t += `🧱 *MATERIAIS:*\n${mats.join('\n')}`;
+
+            const el = document.createElement('textarea');
+            el.value = t; document.body.appendChild(el); el.select();
+            document.execCommand('copy'); document.body.removeChild(el);
+            showToast("📱 Texto copiado para WhatsApp!");
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function closeScreenshot() { document.getElementById('screenshot-modal').classList.add('hidden'); }
+
+        async function exportAndShareExcel() {
+            const get = id => document.getElementById(id).value;
+            const data = [
+                ["RELATÓRIO DIGITAL PRO"],
+                ["ID RDO", get('field-id')],
+                ["DATA", get('current-date')],
+                ["EQUIPE", get('field-equipe')],
+                ["TÉCNICOS", get('field-tecnicos')],
+                ["LOCAL", `${get('field-endereco')}, ${get('field-bairro')}`],
+                ["TASK", get('field-task')],
+                ["INCIDENTE", get('field-incident')],
+                [""],
+                ["DETALHAMENTO"]
+            ];
+
+            Array.from(document.querySelectorAll('input:checked')).forEach(c => {
+                const q = c.closest('.group').querySelector('[id^="qty-"]')?.value || "";
+                data.push([c.dataset.name, q]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Dados");
+            XLSX.writeFile(wb, `RDO_${get('field-id')}_Export.xlsx`);
+            showToast("📊 Excel gerado!");
+        }
+
+        render('activity'); render('service'); render('material');
+    </script>
 </body>
 </html>
+
