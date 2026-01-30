@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carimbo Digital | Equipe L</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-action { transition: transform 0.1s; }
+        .btn-action:active { transform: scale(0.95); }
+
+        #toast {
+            visibility: hidden;
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 99px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #toast.show { visibility: visible; opacity: 1; }
+
+        .printing-mode .no-print { display: none !important; }
+        
+        .custom-cb {
+            width: 1.2rem;
+            height: 1.2rem;
+            accent-color: #2563eb;
+        }
+
+        .stamp-border {
+            display: none;
+            border: 3px solid #1e40af;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .printing-mode .stamp-border { display: block; }
+
+        .history-item { border-bottom: 1px solid #f1f5f9; }
+        .history-item:last-child { border-bottom: none; }
+
+        /* Estilo para a tela de Login */
+        #login-overlay {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-24 text-slate-900">
+
+    <!-- Tela de Login -->
+    <div id="login-overlay" class="fixed inset-0 z-[200] flex items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-blue-700 rounded-2xl flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 shadow-lg">L</div>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Acesso Restrito</h2>
+            <p class="text-sm text-slate-500 mb-6">Introduza a senha da Equipe L</p>
+            
+            <div class="space-y-4">
+                <input type="password" id="login-password" 
+                    class="w-full px-4 py-3 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-center font-bold tracking-widest" 
+                    placeholder="••••••••"
+                    onkeypress="if(event.key === 'Enter') checkLogin()">
+                
+                <button onclick="checkLogin()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-md">
+                    Entrar no Sistema
+                </button>
+            </div>
+            <p id="login-error" class="text-rose-500 text-xs mt-4 font-semibold hidden">Senha incorreta. Tente novamente.</p>
+        </div>
+    </div>
+
+    <div id="toast">Operação realizada!</div>
+
+    <!-- Conteúdo Principal (Escondido até login) -->
+    <div id="app-content" class="hidden">
+        <!-- Navegação Superior -->
+        <nav class="sticky top-0 z-40 w-full bg-white border-b border-slate-200 mb-6 no-print">
+            <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-700 rounded flex items-center justify-center text-white font-bold">L</div>
+                    <span class="font-bold text-slate-800 uppercase tracking-tight">Carimbo <span class="text-blue-600">Digital</span></span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="takeScreenshot()" class="p-2 text-blue-600 bg-blue-50 rounded-lg" title="Gerar Imagem">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                    </button>
+                    <button onclick="exportFullExcel()" class="p-2 text-emerald-600 bg-emerald-50 rounded-lg" title="Exportar Excel com Foto">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-3xl mx-auto px-4" id="capture-area">
+            
+            <!-- Cabeçalho para Imagem -->
+            <div class="stamp-border text-center">
+                <h1 class="text-xl font-black text-blue-800 uppercase">Relatório de Visita Técnica</h1>
+                <p class="text-xs font-bold text-slate-600">EQUIPE L - ENGENHARIA E TELECOMUNICAÇÕES</p>
+            </div>
+
+            <!-- Dados Gerais -->
+            <section class="glass-card rounded-xl shadow-sm p-5 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Nº RDO</label>
+                        <input type="number" id="field-id" class="w-full font-bold text-blue-600 bg-transparent outline-none" value="101">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Data</label>
+                        <input type="date" id="current-date" class="w-full text-sm bg-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Início</label>
+                        <input type="time" id="time-start" class="w-full text-sm bg-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Fim</label>
+                        <input type="time" id="time-end" class="w-full text-sm bg-transparent outline-none">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase">Técnicos</label>
+                    <input type="text" id="field-tecnicos" class="w-full font-semibold bg-transparent outline-none" placeholder="Nome dos técnicos">
+                </div>
+            </section>
+
+            <!-- Localização -->
+            <section class="glass-card rounded-xl shadow-sm p-5 mb-6 relative">
+                <button onclick="getLocation()" class="absolute top-4 right-4 text-blue-600 text-xs font-bold flex items-center gap-1 no-print">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                    GPS
+                </button>
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase mb-3">Localização e Identificação</h3>
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Endereço (Rua, Nº, Cidade - UF)</label>
+                        <input type="text" id="field-endereco" placeholder="Aguardando GPS ou digite aqui..." class="w-full p-2 bg-slate-50 rounded border-none text-sm font-medium">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Coordenadas</label>
+                            <input type="text" id="field-coords" class="w-full p-2 bg-slate-50 rounded border-none text-xs text-slate-500" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Área / Local</label>
+                            <input type="text" id="field-area" placeholder="Ex: Poste, Interno..." class="w-full p-2 bg-slate-50 rounded border-none text-sm font-semibold">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Task</label>
+                        <input type="text" id="field-task" placeholder="Nº Task" class="w-full p-2 bg-slate-50 rounded border-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Incidente</label>
+                        <input type="text" id="field-incident" placeholder="Nº INC" class="w-full p-2 bg-slate-50 rounded border-none text-sm">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Listas -->
+            <div class="space-y-4 mb-6">
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-emerald-500">
+                    <h4 class="text-xs font-bold text-emerald-600 uppercase mb-3">Serviços</h4>
+                    <div id="servicos-list" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+                    <div class="mt-3 flex gap-2 no-print">
+                        <input type="text" id="new-service" placeholder="Novo serviço..." class="flex-1 text-xs p-2 border-dashed border-slate-300 rounded outline-none">
+                        <button onclick="addItem('service')" class="bg-emerald-600 text-white px-3 rounded text-xs font-bold">Add</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-blue-500">
+                    <h4 class="text-xs font-bold text-blue-600 uppercase mb-3">Atividades</h4>
+                    <div id="atividades-list" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+                    <div class="mt-3 flex gap-2 no-print">
+                        <input type="text" id="new-activity" placeholder="Nova atividade..." class="flex-1 text-xs p-2 border-dashed border-slate-300 rounded outline-none">
+                        <button onclick="addItem('activity')" class="bg-blue-600 text-white px-3 rounded text-xs font-bold">Add</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-rose-500">
+                    <h4 class="text-xs font-bold text-rose-600 uppercase mb-3">Materiais</h4>
+                    <div id="materiais-list" class="space-y-2"></div>
+                    <div class="mt-3 flex gap-2 no-print">
+                        <input type="text" id="new-material" placeholder="Novo material..." class="flex-1 text-xs p-2 border-dashed border-slate-300 rounded outline-none">
+                        <button onclick="addItem('material')" class="bg-rose-600 text-white px-3 rounded text-xs font-bold">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico -->
+            <section class="glass-card rounded-xl shadow-sm p-5 mb-6 no-print">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Histórico Recente</h3>
+                    <button onclick="clearHistory()" class="text-rose-500 text-[10px] font-bold uppercase">Limpar Tudo</button>
+                </div>
+                <div id="history-container" class="space-y-3 max-h-60 overflow-y-auto pr-2 text-sm">
+                    <p class="text-slate-400 text-xs italic py-2">Nenhum registo guardado ainda.</p>
+                </div>
+            </section>
+
+            <!-- Rodapé de Assinatura -->
+            <div class="hidden printing-mode flex justify-around text-center mt-12 pb-8">
+                <div class="w-5/12 border-t border-slate-400 pt-2">
+                    <p class="text-[10px] font-bold uppercase text-slate-600">Técnico Responsável</p>
+                </div>
+                <div class="w-5/12 border-t border-slate-400 pt-2">
+                    <p class="text-[10px] font-bold uppercase text-slate-600">Cliente / Fiscal</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Botão Flutuante Copiar -->
+        <div class="fixed bottom-6 right-6 no-print">
+            <button onclick="copyToClipboard()" class="bg-emerald-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center btn-action" title="Copiar WhatsApp">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.588-5.946 0-6.556 5.332-11.888 11.888-11.888 3.176 0 6.161 1.237 8.404 3.48s3.48 5.228 3.48 8.404c0 6.556-5.332 11.888-11.888 11.888-2.096 0-4.141-.547-5.945-1.588l-6.138 1.613zm6.422-3.414l.36.213c1.554.921 3.35 1.408 5.195 1.408 5.423 0 9.834-4.411 9.834-9.834s-4.411-9.834-9.834-9.834-9.834 4.411-9.834 9.834c0 2.056.64 4.055 1.852 5.748l.235.326-.995 3.637 3.73-.979z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização -->
+    <div id="screenshot-modal" class="fixed inset-0 bg-black/80 hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-lg w-full overflow-hidden">
+            <div id="screenshot-container" class="p-4 overflow-auto max-h-[70vh] bg-slate-100"></div>
+            <div class="p-4 border-t">
+                <button onclick="closeScreenshot()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-lg text-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LOGIN LOGIC
+        const PASS = "inovar2026";
+        
+        function checkLogin() {
+            const input = document.getElementById('login-password');
+            const error = document.getElementById('login-error');
+            
+            if (input.value === PASS) {
+                sessionStorage.setItem('isLogged', 'true');
+                unlockApp();
+            } else {
+                error.classList.remove('hidden');
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function unlockApp() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            // Inicializar o resto do app apenas se logado
+            initApp();
+        }
+
+        // Verifica se já está logado nesta sessão
+        if (sessionStorage.getItem('isLogged') === 'true') {
+            unlockApp();
+        }
+
+        // PWA Config
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(e => console.error(e));
+            });
+        }
+
+        const defaultStore = {
+            services: ["Instalação FTTH", "Reparo de Fibra", "Vistoria"],
+            activities: ["Lançamento de Cabo", "Conectorização", "Teste de Potência"],
+            materials: ["Cabo Drop (m)", "Conector Click", "BAP 2"]
+        };
+
+        let db = JSON.parse(localStorage.getItem('carimbo_v4_db')) || defaultStore;
+        let history = JSON.parse(localStorage.getItem('carimbo_v4_history')) || [];
+
+        function saveDB() { localStorage.setItem('carimbo_v4_db', JSON.stringify(db)); }
+        function saveHistory() { localStorage.setItem('carimbo_v4_history', JSON.stringify(history)); }
+
+        function initApp() {
+            document.getElementById('current-date').value = new Date().toISOString().split('T')[0];
+            render('activity'); render('service'); render('material');
+            renderHistory();
+        }
+
+        function render(type) {
+            const mappings = {
+                'activity': { key: 'activities', container: 'atividades' },
+                'service': { key: 'services', container: 'servicos' },
+                'material': { key: 'materials', container: 'materiais' }
+            };
+            const mapping = mappings[type];
+            const container = document.getElementById(`${mapping.container}-list`);
+            container.innerHTML = '';
+            db[mapping.key].forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2 p-2 bg-slate-50 rounded text-xs group transition-all";
+                let html = `<input type="checkbox" id="${type}-${idx}" class="custom-cb no-print" data-name="${item}" data-type="${type}"><label for="${type}-${idx}" class="flex-1 cursor-pointer font-medium">${item}</label>`;
+                if (type === 'material') html += `<input type="text" id="qty-${type}-${idx}" placeholder="Qtd" class="w-12 p-1 border rounded text-center no-print outline-none focus:border-blue-500">`;
+                html += `<button onclick="remove('${type}', ${idx})" class="no-print opacity-0 group-hover:opacity-100 text-rose-400 px-1 text-base">×</button>`;
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+        }
+
+        function addItem(type) {
+            const input = document.getElementById(`new-${type}`);
+            const val = input.value.trim();
+            if(!val) return;
+            const mapping = { 'activity': 'activities', 'service': 'services', 'material': 'materials' };
+            db[mapping[type]].push(val);
+            saveDB(); render(type);
+            input.value = '';
+        }
+
+        function remove(type, idx) {
+            const mapping = { 'activity': 'activities', 'service': 'services', 'material': 'materials' };
+            db[mapping[type]].splice(idx, 1);
+            saveDB(); render(type);
+        }
+
+        function getLocation() {
+            showToast("📍 Localizando...");
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                document.getElementById('field-coords').value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
+                    const data = await res.json();
+                    const addr = data.address;
+                    const logradouro = addr.road || addr.pedestrian || "Rua N/I";
+                    const numero = addr.house_number || "S/N";
+                    const cidade = addr.city || addr.town || "Cidade N/I";
+                    const estado = addr.state_code || addr.state || "";
+                    document.getElementById('field-endereco').value = `${logradouro}, ${numero}, ${cidade} - ${estado}`;
+                    showToast("✅ Localizado!");
+                } catch(e) { showToast("✅ Coordenadas OK!"); }
+            }, () => showToast("❌ Ative o GPS!"));
+        }
+
+        async function exportFullExcel() {
+            showToast("⏳ Gerando Excel com Imagem...");
+            const get = id => document.getElementById(id).value;
+            
+            const dadosRelatorio = [
+                ["RELATÓRIO DE VISITA TÉCNICA - EQUIPE L"],
+                ["----------------------------------------"],
+                ["Nº RDO", get('field-id')],
+                ["DATA", get('current-date')],
+                ["INÍCIO", get('time-start')],
+                ["FIM", get('time-end')],
+                ["TÉCNICOS", get('field-tecnicos')],
+                ["ENDEREÇO", get('field-endereco')],
+                ["COORDENADAS", get('field-coords')],
+                ["ÁREA", get('field-area')],
+                ["TASK", get('field-task')],
+                ["INCIDENTE", get('field-incident')],
+                [""],
+                ["ITENS EXECUTADOS / MATERIAIS"],
+                ["ITEM", "QUANTIDADE"]
+            ];
+
+            Array.from(document.querySelectorAll('input:checked')).forEach(c => {
+                const q = c.closest('.group').querySelector('[id^="qty-"]')?.value || "OK";
+                dadosRelatorio.push([c.dataset.name, q]);
+            });
+
+            const area = document.getElementById('capture-area');
+            area.classList.add('printing-mode');
+            const canvas = await html2canvas(area, { scale: 1 });
+            const imgData = canvas.toDataURL("image/png");
+            area.classList.remove('printing-mode');
+
+            const dadosFotos = [
+                ["COMPROVANTE VISUAL / CARIMBO DIGITAL"],
+                ["Este arquivo contém a captura da tela do relatório técnico."],
+                [""],
+                ["LINK DA IMAGEM (Base64):"],
+                [imgData]
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const wsDados = XLSX.utils.aoa_to_sheet(dadosRelatorio);
+            const wsFotos = XLSX.utils.aoa_to_sheet(dadosFotos);
+
+            XLSX.utils.book_append_sheet(wb, wsDados, "Dados do RDO");
+            XLSX.utils.book_append_sheet(wb, wsFotos, "Anexo Visual");
+
+            XLSX.writeFile(wb, `RDO_${get('field-id')}_EquipeL.xlsx`);
+            showToast("📊 Excel completo baixado!");
+        }
+
+        function copyToClipboard() {
+            const get = id => document.getElementById(id).value;
+            const selected = (selector) => Array.from(document.querySelectorAll(selector))
+                .filter(c => c.checked)
+                .map(c => {
+                    const q = c.closest('.group').querySelector('input[id^="qty-"]')?.value;
+                    return (q ? `[${q}] ` : "• ") + c.dataset.name;
+                }).join('\n');
+
+            let text = `*RELATÓRIO TÉCNICO RDO ${get('field-id')}*\n`;
+            text += `📅 Data: ${get('current-date')}\n`;
+            text += `⏰ Horário: ${get('time-start')} às ${get('time-end')}\n`;
+            text += `👷 Técnicos: ${get('field-tecnicos')}\n`;
+            text += `📍 Local: ${get('field-endereco')}\n`;
+            text += `🏢 Área: ${get('field-area')}\n`;
+            text += `🎫 Task: ${get('field-task')} | INC: ${get('field-incident')}\n\n`;
+            
+            const se = selected('#servicos-list input');
+            const at = selected('#atividades-list input');
+            const ma = selected('#materiais-list input');
+
+            if(se) text += `*SERVIÇOS:*\n${se}\n\n`;
+            if(at) text += `*ATIVIDADES:*\n${at}\n\n`;
+            if(ma) text += `*MATERIAIS:*\n${ma}\n`;
+
+            const el = document.createElement('textarea');
+            el.value = text; document.body.appendChild(el);
+            el.select(); document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            addToHistory(text);
+            showToast("✅ Copiado e guardado!");
+        }
+
+        function addToHistory(text) {
+            const entry = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                rdo: document.getElementById('field-id').value,
+                content: text
+            };
+            history.unshift(entry);
+            if(history.length > 20) history.pop();
+            saveHistory();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-container');
+            if(!container) return;
+            if(history.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">Sem histórico.</p>';
+                return;
+            }
+            container.innerHTML = history.map(item => `
+                <div class="history-item py-2">
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-blue-700">RDO ${item.rdo}</span>
+                        <span class="text-[9px] text-slate-400">${item.date}</span>
+                    </div>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="copyRaw('${item.id}')" class="text-[9px] bg-slate-100 text-blue-600 px-2 py-1 rounded">Copiar</button>
+                        <button onclick="deleteHistoryItem('${item.id}')" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-1 rounded">Apagar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function copyRaw(id) {
+            const item = history.find(h => h.id == id);
+            if(!item) return;
+            const el = document.createElement('textarea');
+            el.value = item.content; document.body.appendChild(el);
+            el.select(); document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast("✅ Texto recuperado!");
+        }
+
+        function deleteHistoryItem(id) {
+            history = history.filter(h => h.id != id);
+            saveHistory(); renderHistory();
+        }
+
+        function clearHistory() {
+            if(confirm("Limpar histórico?")) {
+                history = []; saveHistory(); renderHistory();
+            }
+        }
+
+        async function takeScreenshot() {
+            const area = document.getElementById('capture-area');
+            area.classList.add('printing-mode');
+            const checks = document.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(c => {
+                if(!c.checked) c.closest('.group').style.display = 'none';
+                else c.style.display = 'none';
+            });
+
+            const canvasImg = await html2canvas(area, { scale: 2 });
+            const finalImg = new Image();
+            finalImg.src = canvasImg.toDataURL();
+            finalImg.className = "w-full";
+            document.getElementById('screenshot-container').innerHTML = '';
+            document.getElementById('screenshot-container').appendChild(finalImg);
+            document.getElementById('screenshot-modal').classList.remove('hidden');
+            
+            area.classList.remove('printing-mode');
+            checks.forEach(c => {
+                c.closest('.group').style.display = '';
+                c.style.display = '';
+            });
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function closeScreenshot() { document.getElementById('screenshot-modal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
